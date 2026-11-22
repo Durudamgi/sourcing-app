@@ -1,6 +1,4 @@
-streamlit
-pandas
-openpyxl
+
 
 """
 초보 오픈마켓 셀러를 위한 도매 상품 소싱 & 마진 자동 분석기 (Streamlit)
@@ -441,3 +439,7 @@ if df_raw is not None and not df_raw.empty:
         file_name="sourcing_filtered_result.csv",
         mime="text/csv",
     )
+
+streamlit
+pandas
+openpyxl
