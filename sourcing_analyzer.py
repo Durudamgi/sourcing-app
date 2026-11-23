@@ -3,7 +3,7 @@
 -------------------------------------------------------------------------
 주요 기능:
 1. 도매처 원클릭 키워드 검색 (도매매, 오너클랜, 도매토피아, 스페셜오퍼, 온채널, 네이버쇼핑)
-2. 도매처 CSV/엑셀 파일 업로드 및 한국어 인코딩 자동 감지 + 파일 내 키워드 검색
+2. 도매처 CSV/엑셀 파일 업로드 및 한국어 인코딩 자동 감지 + 상품명/상품번호 필터링
 3. 초보 셀러 회피 품목(유아·의료·지재권 위험) 및 KC 인증 주의 키워드 자동 필터링
 4. 5대 마켓(스마트스토어, 카카오톡스토어, 11번가, G마켓, 옥션) 권장 판매가 & 예상 순이익 동시 계산
 5. 일반과세자 기본값 적용, 최대 1,000개 표시, 엑셀 호환 CSV 다운로드
@@ -11,6 +11,7 @@
 
 import io
 import math
+import re
 from urllib.parse import quote
 import pandas as pd
 import streamlit as st
@@ -288,12 +289,20 @@ if df_raw is not None and not df_raw.empty:
                     return idx
         return min(fallback, len(columns) - 1)
 
-    m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+    m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
     with m_col1:
         col_name = st.selectbox("상품명 열", columns, index=guess_col_index(["상품명", "품명", "제품명", "name"]))
     with m_col2:
-        col_supply = st.selectbox("도매 공급가 열", columns, index=guess_col_index(["공급가", "도매가", "단가", "원가", "price"]))
+        code_options = ["(상품번호 열 없음)"] + columns
+        default_code_idx = 0
+        for idx, col in enumerate(columns, start=1):
+            if any(k in str(col).lower() for k in ["상품번호", "상품코드", "업체상품코드", "제품코드", "코드", "code"]):
+                default_code_idx = idx
+                break
+        col_code = st.selectbox("상품번호/코드 열", code_options, index=default_code_idx)
     with m_col3:
+        col_supply = st.selectbox("도매 공급가 열", columns, index=guess_col_index(["공급가", "도매가", "단가", "원가", "price"]))
+    with m_col4:
         shipping_options = ["(고정 3,000원 적용)"] + columns
         default_ship_idx = 0
         for idx, col in enumerate(columns, start=1):
@@ -301,7 +310,7 @@ if df_raw is not None and not df_raw.empty:
                 default_ship_idx = idx
                 break
         col_shipping = st.selectbox("도매 택배비 열", shipping_options, index=default_ship_idx)
-    with m_col4:
+    with m_col5:
         market_price_options = ["(시중가 비교 안 함)"] + columns
         default_mkt_idx = 0
         for idx, col in enumerate(columns, start=1):
@@ -404,14 +413,15 @@ if df_raw is not None and not df_raw.empty:
     # 6. 필터링 및 결과 테이블 + CSV 다운로드
     # ==========================================================================
     st.subheader("3️⃣ 소싱 후보 필터링 및 다운로드 (최대 1,000개 표시)")
-    f_col1, f_col2, f_col3 = st.columns([2, 2, 2])
-    with f_col1:
+
+    r1_c1, r1_c2 = st.columns(2)
+    with r1_c1:
         selected_statuses = st.multiselect(
             "표시할 리스크 등급",
             options=["🟢 안전 통과", "🟡 KC 확인 필요", "🔴 제외 권장"],
             default=["🟢 안전 통과", "🟡 KC 확인 필요"],
         )
-    with f_col2:
+    with r1_c2:
         min_supply, max_supply = st.slider(
             "도매 공급가 범위 필터 (원)",
             min_value=0,
@@ -419,10 +429,17 @@ if df_raw is not None and not df_raw.empty:
             value=(0, max(50000, int(supply_series.max()))),
             step=1000,
         )
-    with f_col3:
+
+    r2_c1, r2_c2 = st.columns(2)
+    with r2_c1:
         file_search_kw = st.text_input(
-            "🔎 업로드 파일 내 상품명 검색",
-            placeholder="예: 하부장, 선반 (띄어쓰기로 여러 단어)",
+            "🔎 상품명 검색 (띄어쓰기로 여러 단어 모두 포함)",
+            placeholder="예: 하부장 선반",
+        ).strip()
+    with r2_c2:
+        code_search_kw = st.text_input(
+            "🔢 상품번호/코드 검색 (쉼표·띄어쓰기로 여러 개 조회)",
+            placeholder="예: W1001, D2045",
         ).strip()
 
     mask = (
@@ -434,6 +451,18 @@ if df_raw is not None and not df_raw.empty:
     if file_search_kw:
         for word in file_search_kw.split():
             mask = mask & df_result[col_name].astype(str).str.contains(word, case=False, na=False)
+
+    if code_search_kw:
+        code_tokens = [c.strip() for c in re.split(r"[,\s]+", code_search_kw) if c.strip()]
+        if code_tokens:
+            pattern = "|".join(re.escape(tok) for tok in code_tokens)
+            if col_code != "(상품번호 열 없음)":
+                mask = mask & df_result[col_code].astype(str).str.contains(pattern, case=False, na=False)
+            else:
+                row_match = df_result.astype(str).apply(
+                    lambda s: s.str.contains(pattern, case=False, na=False)
+                ).any(axis=1)
+                mask = mask & row_match
 
     df_filtered = df_result[mask]
 
