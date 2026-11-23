@@ -234,10 +234,10 @@ with st.expander("🔍 도매처 원클릭 키워드 검색 (클릭해서 바로
         q_utf8 = quote(search_kw)
         b1, b2, b3, b4, b5, b6 = st.columns(6)
         b1.link_button("도매매 검색", f"https://domemedb.domeggook.com/index/item/supplyList.php?sf=subject&enc=utf8&fromOversea=0&mode=search&sw={q_utf8}&image_file=", use_container_width=True)
-        b2.link_button("오너클랜 검색", f"https://ownerclan.com/V2/product/search.php?topSearchKeyword={q_utf8}", use_container_width=True)
+        b2.link_button("오너클랜 검색", f"https://www.ownerclan.com/V2/product/search.php?topSearchKeywordInfo=&topSearchKeyword={q_utf8}&topSearchType=all", use_container_width=True)
         b3.link_button("도매토피아 검색", f"https://dometopia.com/goods/search?search_text={q_utf8}", use_container_width=True)
-        b4.link_button("도매창고 검색", f"https://domaechanggo.com/product/search.html?keyword={q_utf8}", use_container_width=True)
-        b5.link_button("스페셜오퍼 검색", f"https://specialoffer.kr/shop/search.php?q={q_utf8}", use_container_width=True)
+        b4.link_button("스페셜오퍼 검색", f"https://specialoffer.kr/shop/search.php?ss_field=all&ss_tx={q_utf8}", use_container_width=True)
+        b5.link_button("온채널 검색", f"https://www.onch3.co.kr/dbcenter_renewal/index.php?channel=product_nm&keyword={q_utf8}", use_container_width=True)
         b6.link_button("네이버 시중가", f"https://search.shopping.naver.com/search/all?query={q_utf8}", use_container_width=True)
     else:
         st.caption("위 입력창에 키워드를 치면 주요 도매사이트와 네이버 쇼핑 검색 버튼이 나타납니다.")
