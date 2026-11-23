@@ -2,8 +2,8 @@
 초보 오픈마켓 셀러를 위한 5대 마켓 동시 도매 소싱 & 마진 자동 분석기 (Streamlit)
 -------------------------------------------------------------------------
 주요 기능:
-1. 도매처 원클릭 키워드 검색 (도매매, 오너클랜, 도매토피아, 스페셜오퍼, 온채널, 네이버쇼핑)
-2. 도매처 CSV/엑셀 파일 업로드 및 한국어 인코딩 자동 감지 + 상품명/상품번호 필터링
+1. 도매처 원클릭 키워드 & 상품번호 검색 (도매매, 오너클랜, 도매토피아, 스페셜오퍼, 온채널, 네이버쇼핑)
+2. 도매처 CSV/엑셀 파일 업로드 및 한국어 인코딩 자동 감지 + 상품명/상품번호 정밀 필터링
 3. 초보 셀러 회피 품목(유아·의료·지재권 위험) 및 KC 인증 주의 키워드 자동 필터링
 4. 5대 마켓(스마트스토어, 카카오톡스토어, 11번가, G마켓, 옥션) 권장 판매가 & 예상 순이익 동시 계산
 5. 일반과세자 기본값 적용, 최대 1,000개 표시, 엑셀 호환 CSV 다운로드
@@ -46,14 +46,14 @@ DEFAULT_KC_KEYWORDS = [
 def create_sample_dataframe() -> pd.DataFrame:
     """테스트용 샘플 데이터 생성"""
     sample_data = [
-        {"도매처": "오너클랜", "상품코드": "W1001", "상품명": "싱크대 하부장 정리대 2단 슬라이딩 선반", "공급가": 12500, "택배비": 3000, "시중가": 23900},
-        {"도매처": "도매매", "상품코드": "D2045", "상품명": "프라이팬 정리대 길이조절 냄비 뚜껑 거치대", "공급가": 11000, "택배비": 3000, "시중가": 21900},
-        {"도매처": "온채널", "상품코드": "O3312", "상품명": "냉장고 정리 트레이 투명 손잡이 바구니 6P 세트", "공급가": 13500, "택배비": 3000, "시중가": 25900},
-        {"도매처": "오너클랜", "상품코드": "W1088", "상품명": "USB 충전식 차량용 열선 방석 시트", "공급가": 16000, "택배비": 3000, "시중가": 29900},
-        {"도매처": "도매토피아", "상품코드": "T5521", "상품명": "유아용 실리콘 캐릭터 빨대컵 (디즈니)", "공급가": 7000, "택배비": 3000, "시중가": 15900},
-        {"도매처": "도매매", "상품코드": "D2099", "상품명": "주방 틈새 선반 이동식 3단 트롤리", "공급가": 14900, "택배비": 3000, "시중가": 28900},
-        {"도매처": "스페셜오퍼", "상품코드": "S7710", "상품명": "다용도 욕실 미끄럼방지 매트 6P 세트", "공급가": 12000, "택배비": 3000, "시중가": 22500},
-        {"도매처": "도매매", "상품코드": "D2110", "상품명": "체지방 감소 다이어트 건강 보조 밴드", "공급가": 14000, "택배비": 3000, "시중가": 28000},
+        {"도매처": "온채널", "상품번호": "12756014", "상품명": "싱크대 하부장 정리대 2단 슬라이딩 선반", "공급가": 12500, "택배비": 3000, "시중가": 23900},
+        {"도매처": "도매매", "상품번호": "20458812", "상품명": "프라이팬 정리대 길이조절 냄비 뚜껑 거치대", "공급가": 11000, "택배비": 3000, "시중가": 21900},
+        {"도매처": "오너클랜", "상품번호": "W1001234", "상품명": "냉장고 정리 트레이 투명 손잡이 바구니 6P 세트", "공급가": 13500, "택배비": 3000, "시중가": 25900},
+        {"도매처": "오너클랜", "상품번호": "W1088990", "상품명": "USB 충전식 차량용 열선 방석 시트", "공급가": 16000, "택배비": 3000, "시중가": 29900},
+        {"도매처": "도매토피아", "상품번호": "T552100", "상품명": "유아용 실리콘 캐릭터 빨대컵 (디즈니)", "공급가": 7000, "택배비": 3000, "시중가": 15900},
+        {"도매처": "도매매", "상품번호": "20994411", "상품명": "주방 틈새 선반 이동식 3단 트롤리", "공급가": 14900, "택배비": 3000, "시중가": 28900},
+        {"도매처": "스페셜오퍼", "상품번호": "S771022", "상품명": "다용도 욕실 미끄럼방지 매트 6P 세트", "공급가": 12000, "택배비": 3000, "시중가": 22500},
+        {"도매처": "도매매", "상품번호": "21103399", "상품명": "체지방 감소 다이어트 건강 보조 밴드", "공급가": 14000, "택배비": 3000, "시중가": 28000},
     ]
     return pd.DataFrame(sample_data)
 
@@ -151,6 +151,27 @@ def calculate_recommended_price(
     return recommended_price, int(round(net_profit))
 
 
+def guess_code_col_index(columns: list[str]) -> int:
+    """카테고리코드를 피하고 실제 상품번호/상품코드 열을 우선 탐색"""
+    priority_keys = [
+        "상품번호", "원본상품번호", "상품코드", "업체상품코드",
+        "채널상품코드", "자체상품코드", "제품코드", "관리코드", "품번",
+    ]
+    for key in priority_keys:
+        for idx, col in enumerate(columns, start=1):
+            if key in str(col):
+                return idx
+
+    for idx, col in enumerate(columns, start=1):
+        col_lower = str(col).lower()
+        if ("코드" in col_lower or "code" in col_lower) and not any(
+            ex in col_lower for ex in ["카테고리", "분류", "category"]
+        ):
+            return idx
+
+    return 0
+
+
 # ==============================================================================
 # 3. 사이드바 UI (5대 마켓 수수료·마진·과세·필터 설정)
 # ==============================================================================
@@ -232,24 +253,32 @@ kc_kw_list = [k.strip() for k in custom_kc_text.split(",") if k.strip()]
 st.title("📦 5대 마켓 동시 도매 소싱·마진 분석기")
 st.caption("도매처 원클릭 검색부터 5대 마켓(스마트스토어·카카오톡스토어·11번가·G마켓·옥션) 마진 분석까지 한 번에 처리합니다.")
 
-# --- 도매처 원클릭 키워드 검색 ---
-with st.expander("🔍 도매처 원클릭 키워드 검색 (클릭해서 바로 찾기)", expanded=True):
+# --- 도매처 원클릭 키워드 & 상품번호 검색 ---
+with st.expander("🔍 도매처 원클릭 키워드 & 상품번호 검색 (클릭해서 바로 찾기)", expanded=True):
     search_kw = st.text_input(
-        "찾고 싶은 아이템 키워드를 입력하세요",
-        placeholder="예: 싱크대 하부장 정리대, 프라이팬 거치대, 냉장고 트레이",
+        "찾고 싶은 아이템 키워드 또는 상품번호를 입력하세요",
+        placeholder="예: 싱크대 하부장 정리대  또는  12756014",
     ).strip()
 
     if search_kw:
         q_utf8 = quote(search_kw)
+        is_num_code = search_kw.isdigit()
+        domeme_sf = "no" if is_num_code else "subject"
+        onch_url = (
+            f"https://www.onch3.co.kr/dbcenter_renewal/detail.php?num={q_utf8}"
+            if is_num_code
+            else f"https://www.onch3.co.kr/dbcenter_renewal/index.php?channel=product_nm&keyword={q_utf8}"
+        )
+
         b1, b2, b3, b4, b5, b6 = st.columns(6)
-        b1.link_button("도매매 검색", f"https://domemedb.domeggook.com/index/item/supplyList.php?sf=subject&enc=utf8&fromOversea=0&mode=search&sw={q_utf8}&image_file=", use_container_width=True)
+        b1.link_button("도매매 검색", f"https://domemedb.domeggook.com/index/item/supplyList.php?sf={domeme_sf}&enc=utf8&fromOversea=0&mode=search&sw={q_utf8}&image_file=", use_container_width=True)
         b2.link_button("오너클랜 검색", f"https://www.ownerclan.com/V2/product/search.php?topSearchKeywordInfo=&topSearchKeyword={q_utf8}&topSearchType=all", use_container_width=True)
         b3.link_button("도매토피아 검색", f"https://dometopia.com/goods/search?search_text={q_utf8}", use_container_width=True)
         b4.link_button("스페셜오퍼 검색", f"https://specialoffer.kr/shop/search.php?ss_field=all&ss_tx={q_utf8}", use_container_width=True)
-        b5.link_button("온채널 검색", f"https://www.onch3.co.kr/dbcenter_renewal/index.php?channel=product_nm&keyword={q_utf8}", use_container_width=True)
+        b5.link_button("온채널 검색", onch_url, use_container_width=True)
         b6.link_button("네이버 시중가", f"https://search.shopping.naver.com/search/all?query={q_utf8}", use_container_width=True)
     else:
-        st.caption("위 입력창에 키워드를 치면 주요 도매사이트와 네이버 쇼핑 검색 버튼이 나타납니다.")
+        st.caption("키워드를 입력하면 상품명 검색으로, 숫자 상품번호(예: 12756014)를 입력하면 상품번호/상세페이지로 바로 연결됩니다.")
 
 st.divider()
 
@@ -294,12 +323,7 @@ if df_raw is not None and not df_raw.empty:
         col_name = st.selectbox("상품명 열", columns, index=guess_col_index(["상품명", "품명", "제품명", "name"]))
     with m_col2:
         code_options = ["(상품번호 열 없음)"] + columns
-        default_code_idx = 0
-        for idx, col in enumerate(columns, start=1):
-            if any(k in str(col).lower() for k in ["상품번호", "상품코드", "업체상품코드", "제품코드", "코드", "code"]):
-                default_code_idx = idx
-                break
-        col_code = st.selectbox("상품번호/코드 열", code_options, index=default_code_idx)
+        col_code = st.selectbox("상품번호/코드 열", code_options, index=guess_code_col_index(columns))
     with m_col3:
         col_supply = st.selectbox("도매 공급가 열", columns, index=guess_col_index(["공급가", "도매가", "단가", "원가", "price"]))
     with m_col4:
@@ -438,8 +462,8 @@ if df_raw is not None and not df_raw.empty:
         ).strip()
     with r2_c2:
         code_search_kw = st.text_input(
-            "🔢 상품번호/코드 검색 (쉼표·띄어쓰기로 여러 개 조회)",
-            placeholder="예: W1001, D2045",
+            "🔢 상품번호/코드 검색 (번호 또는 URL 통째 붙여넣기 가능)",
+            placeholder="예: 12756014, W1001234",
         ).strip()
 
     mask = (
@@ -453,14 +477,37 @@ if df_raw is not None and not df_raw.empty:
             mask = mask & df_result[col_name].astype(str).str.contains(word, case=False, na=False)
 
     if code_search_kw:
-        code_tokens = [c.strip() for c in re.split(r"[,\s]+", code_search_kw) if c.strip()]
+        raw_tokens = [c.strip() for c in re.split(r"[,\s]+", code_search_kw) if c.strip()]
+        code_tokens = []
+        for tok in raw_tokens:
+            # URL을 그대로 붙여넣은 경우 끝의 상품번호 파라미터(num=, no=, goodsNo= 등) 자동 추출
+            m_param = re.search(
+                r"(?:num|no|goodsNo|goods_no|code|item_no)=([A-Za-z0-9_-]+)",
+                tok,
+                re.IGNORECASE,
+            )
+            if m_param:
+                code_tokens.append(m_param.group(1))
+            else:
+                code_tokens.append(tok)
+
         if code_tokens:
             pattern = "|".join(re.escape(tok) for tok in code_tokens)
+            url_cols = [c for c in columns if any(u in str(c).lower() for u in ["url", "링크", "주소", "link"])]
+
             if col_code != "(상품번호 열 없음)":
-                mask = mask & df_result[col_code].astype(str).str.contains(pattern, case=False, na=False)
+                target_cols = [col_code] + [c for c in url_cols if c != col_code]
+                code_match = df_result[target_cols].apply(
+                    lambda s: s.astype(str)
+                    .str.replace(r"\.0$", "", regex=True)
+                    .str.contains(pattern, case=False, na=False)
+                ).any(axis=1)
+                mask = mask & code_match
             else:
-                row_match = df_result.astype(str).apply(
-                    lambda s: s.str.contains(pattern, case=False, na=False)
+                row_match = df_result.apply(
+                    lambda s: s.astype(str)
+                    .str.replace(r"\.0$", "", regex=True)
+                    .str.contains(pattern, case=False, na=False)
                 ).any(axis=1)
                 mask = mask & row_match
 
