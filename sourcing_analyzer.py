@@ -233,7 +233,7 @@ with st.expander("🔍 도매처 원클릭 키워드 검색 (클릭해서 바로
     if search_kw:
         q_utf8 = quote(search_kw)
         b1, b2, b3, b4, b5, b6 = st.columns(6)
-        b1.link_button("도매매 검색", f"https://domeme.domeggook.com/s/?sf=subject&sw={q_utf8}", use_container_width=True)
+        b1.link_button("도매매 검색", f"https://domemedb.domeggook.com/index/item/supplyList.php?sf=subject&enc=utf8&fromOversea=0&mode=search&sw={q_utf8}&image_file=", use_container_width=True)
         b2.link_button("오너클랜 검색", f"https://ownerclan.com/V2/product/search.php?topSearchKeyword={q_utf8}", use_container_width=True)
         b3.link_button("도매토피아 검색", f"https://dometopia.com/goods/search?search_text={q_utf8}", use_container_width=True)
         b4.link_button("도매창고 검색", f"https://domaechanggo.com/product/search.html?keyword={q_utf8}", use_container_width=True)
